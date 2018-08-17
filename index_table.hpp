@@ -52,7 +52,7 @@ class index_bucket {
             items[index] = item;
             filled++;
         }
-        return index;
+        return index + (bucket_index * S);
     }
 
     // Returns the index of the item that was removed, else -1.
@@ -62,7 +62,7 @@ class index_bucket {
             items[index] = T();
             filled--;
         }
-        return (index != S) ? index : -1;
+        return (index != S) ? index + (bucket_index * S) : -1;
     }
 };
 
@@ -70,6 +70,7 @@ template<typename T, size_t S>
 class index_table {
     public:
     std::vector<index_bucket<T, S>*> buckets;
+    private:
     std::stack<int32_t> empty;
     
     // Creates a new bucket with the next freely available range of indices on the stack.
@@ -187,7 +188,7 @@ class index_table {
 
     // Gets the item at the specified index.
     T geti(int32_t index) {
-        auto iter = std::find_if(buckets.begin(), buckets.end(), [&index](index_bucket<T, S>* bck) { return bck->items[index % S] != T(); });
+        auto iter = std::find_if(buckets.begin(), buckets.end(), [&index](index_bucket<T, S>* bck) { return bck->bucket_index == (index / S); });
         if (iter == buckets.end())
             return T();
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];

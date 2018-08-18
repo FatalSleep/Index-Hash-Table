@@ -2,8 +2,8 @@
 #define INDEX_TABLE
 /*
     This library provides an index lookup table without wasting memory space.
-    So what we do is create a hash table with a perfect hash, where the input index is the has.
-    This results in a zero-collision perfect hash table.
+    So what we do is create a hash table with a perfect hash, where the input index is the hash.
+    This results in a zero-collision perfect hash table (technically a pseudo hash-table).
 
     Each bucket will be numbered according to it's index range. For example if a bucket
     size is 8 indices, and we have index 169, then the bucket index is floor(169/8).
@@ -39,7 +39,7 @@ class index_bucket {
         return (index != S)? index : -1;
     }
 
-    // Gest the idnex of the item if it exists, else null.
+    // Gets the index of the item if it exists, else null.
     int32_t item(T item) {
         int32_t index = std::distance(items, std::find_if(std::begin(items), std::end(items), [item](T itm) { return itm == item; }));
         return (index != S) ? index : -1;
@@ -52,7 +52,7 @@ class index_bucket {
             items[index] = item;
             filled++;
         }
-        return index + (bucket_index * S);
+        return index;
     }
 
     // Returns the index of the item that was removed, else -1.
@@ -62,7 +62,7 @@ class index_bucket {
             items[index] = T();
             filled--;
         }
-        return (index != S) ? index + (bucket_index * S) : -1;
+        return (index != S) ? index : -1;
     }
 };
 
@@ -132,7 +132,7 @@ class index_table {
         if (bckt == nullptr)
             bckt = bucket();
 
-        return bckt->insert(item);
+        return bckt->insert(item) + (bckt->bucket_index * S);
     }
 
     // Removes the specified item from the index table.
@@ -143,7 +143,7 @@ class index_table {
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];
 
         if (bckt != nullptr) {
-            int32_t index = bckt->remove(item);
+            int32_t index = bckt->remove(item) + (bckt->bucket_index * S);
 
             if (bckt->filled <= 0) {
                 buckets.erase(iter);
@@ -183,7 +183,7 @@ class index_table {
         if (iter == buckets.end())
             return -1;
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];
-        return bckt->item(item);
+        return bckt->item(item) + (bckt->bucket_index * S);
     }
 
     // Gets the item at the specified index.

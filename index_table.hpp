@@ -72,6 +72,7 @@ class index_table {
     std::vector<index_bucket<T, S>*> buckets;
     private:
     std::stack<int32_t> empty;
+    int32_t bucket_hiindex;
     
     // Creates a new bucket with the next freely available range of indices on the stack.
     index_bucket<T, S>* bucket() {
@@ -79,19 +80,16 @@ class index_table {
         index_bucket<T,S>* bckt;
 
         if (empty.size() > 0) {
+            // This means not all buckets are present and ones have been deleted, freeing up bucket ranges.
             bindex = empty.top();
             empty.pop();
         } else {
             if (buckets.size() > 0) {
-                bindex = std::find_if(buckets.begin(), buckets.end(), [&bindex](index_bucket<T, S>* b) {
-                    if (b->bucket_index > bindex) {
-                        bindex = b->bucket_index;
-                        return true;
-                    }
-                    
-                    return false;
-                }) - buckets.begin() + 1;
+                // This means all bucket ranges are present, so just create a new bucket at the end range.
+                bindex = bucket_hiindex + 1;
+                bucket_hiindex = bindex;
             } else {
+                // No buckets are present, so create a new bucket starting at the [0 ... S] range.
                 bindex = 0;
             }
         }
@@ -112,6 +110,7 @@ class index_table {
     public:
     // Create a table with a number of pre-existing buckets as "cache."
     index_table(int32_t cache) {
+        bucket_hiindex = 0;
         for(int32_t i = 0; i < cache; i++)
             bucket();
     }
@@ -147,6 +146,7 @@ class index_table {
 
             if (bckt->filled <= 0) {
                 buckets.erase(iter);
+                empty.push(bckt->bucket_index);
                 delete bckt;
             }
 
@@ -158,20 +158,22 @@ class index_table {
 
     // Removes the item at the specified index from the index table.
     T removei(int32_t index) {
-        auto iter = std::find_if(buckets.begin(), buckets.end(), [&index](index_bucket<T, S>* bck) { return bck->items[index % S] != T(); });
+        auto iter = std::find_if(buckets.begin(), buckets.end(), [&index](index_bucket<T, S>* bck) { return bck->bucket_index == (index / S); });
         if (iter == buckets.end())
             return T();
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];
-
-        if (bckt != T()) {
+        
+        if (bckt != nullptr) {
             T item = bckt->items[index % S];
             bckt->remove(item);
 
             if (bckt->filled <= 0) {
                 buckets.erase(iter);
+                empty.push(bckt->bucket_index);
                 delete bckt;
-                return item;
             }
+
+            return item;
         }
 
         return T();

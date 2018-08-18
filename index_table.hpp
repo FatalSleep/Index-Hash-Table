@@ -17,8 +17,14 @@
 #include <numeric>
 #include <iterator>
 #include <functional>
-#include <iostream>
 
+/*
+    Used via index_table<T, S>  to store items at their position in the index_table.
+    The bucket can only hold <S> number of items according to it's index_table definition.
+
+    T: Type of data you want to store.
+    S: Size of each bucket's cache for storing items.
+*/
 template<typename T, size_t S>
 class index_bucket {
     public:
@@ -66,12 +72,23 @@ class index_bucket {
     }
 };
 
+/*
+    Simple form of a hash table to create key-value pairs between items <T> and indices without
+    using red-black trees or other typical hash-table methods.
+
+    T: Type of data you want to store.
+    S: Size of each bucket's cache for storing items.
+*/
 template<typename T, size_t S>
 class index_table {
     public:
+    // Vector containing all unordered buckets and their items.
     std::vector<index_bucket<T, S>*> buckets;
     private:
+    // Keeps track of all bucket indices of delete buckets so that the indices can be re-queued for new buckets.
     std::stack<int32_t> empty;
+    // Tracks the last bucket index for creating buckets when all buckets from 0 to N are full.
+    // This is because the buckets vector can have buckets out of order, so we use this to keep from searching for the highest bucket index via the vector.
     int32_t bucket_hiindex;
     
     // Creates a new bucket with the next freely available range of indices on the stack.
@@ -110,6 +127,7 @@ class index_table {
     public:
     // Create a table with a number of pre-existing buckets as "cache."
     index_table(int32_t cache) {
+        // Set the highest found bucket index in the table to 0 (no buckets).
         bucket_hiindex = 0;
         for(int32_t i = 0; i < cache; i++)
             bucket();
@@ -136,14 +154,18 @@ class index_table {
 
     // Removes the specified item from the index table.
     int32_t removet(T item) {
+        // Find any bucket that contains the item as an iterator.
         auto iter = std::find_if(buckets.begin(), buckets.end(), [&item](index_bucket<T, S>* bckt) { return bckt->item(item) != -1; });
         if (iter == buckets.end())
             return -1;
+        // Get the bucket from the iterator found.
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];
 
+        // If the bucket exists then remove the item.
         if (bckt != nullptr) {
             int32_t index = bckt->remove(item) + (bckt->bucket_index * S);
 
+            // If the bucket has no items, delete it.
             if (bckt->filled <= 0) {
                 buckets.erase(iter);
                 empty.push(bckt->bucket_index);
@@ -158,15 +180,19 @@ class index_table {
 
     // Removes the item at the specified index from the index table.
     T removei(int32_t index) {
+        // Find any bucket that contains the item as an iterator.
         auto iter = std::find_if(buckets.begin(), buckets.end(), [&index](index_bucket<T, S>* bck) { return bck->bucket_index == (index / S); });
         if (iter == buckets.end())
             return T();
+        // Get the bucket from the iterator found.
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];
         
+        // If the bucket exists then remove the item.
         if (bckt != nullptr) {
             T item = bckt->items[index % S];
             bckt->remove(item);
 
+            // If the bucket has no items, delete it.
             if (bckt->filled <= 0) {
                 buckets.erase(iter);
                 empty.push(bckt->bucket_index);
@@ -181,9 +207,11 @@ class index_table {
 
     // Gets the index of the specified item.
     int32_t gett(T item) {
+        // Find any bucket that contains the item as an iterator.
         auto iter = std::find_if(buckets.begin(), buckets.end(), [&item](index_bucket<T, S>* bckt) { return bckt->item(item) != -1; });
         if (iter == buckets.end())
             return -1;
+        // Get the bucket from the iterator found.
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];
         return bckt->item(item) + (bckt->bucket_index * S);
     }
@@ -193,6 +221,7 @@ class index_table {
         auto iter = std::find_if(buckets.begin(), buckets.end(), [&index](index_bucket<T, S>* bck) { return bck->bucket_index == (index / S); });
         if (iter == buckets.end())
             return T();
+        // Get the bucket from the iterator found.
         index_bucket<T, S>* bckt = buckets[iter - buckets.begin()];
         return bckt->items[index % S];
     }

@@ -44,5 +44,5 @@ In worst case creating a new bucket will be `O(n)` where `n` is the number of bu
 Let's define `b = # of buckets` and `n = # of items` and `s = size of bucket`.
 - Item Inserts: `O(b + s)`
 - Item Removes: `O(n)` (remove by item) or `O(b)` (remove by index).
-- Item Searchs: `O(n)` (remove by item) or `O(b)` (remove by index).
+- Item Searchs: `O(n)` (search by item) or `O(b)` (search by index).
 - Item Counts: `O(b + s)`
